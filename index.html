@@ -195,16 +195,10 @@
             bottom: 22vh;
             z-index: 20;
             pointer-events: none;
+            transform: translateX(-50%);
+            /* Độ lệch ngang do JavaScript tính từng khung hình theo điểm cuối sợi dây (followLabels) */
+            will-change: transform;
             transition: left 0.8s cubic-bezier(0.25, 1, 0.5, 1);
-        }
-
-        @keyframes labelParallaxSlide {
-            0% { transform: translateX(-50%) translateX(-10px); }
-            100% { transform: translateX(-50%) translateX(10px); }
-        }
-
-        .crystal-label-container.swaying-label {
-            animation: labelParallaxSlide 6s ease-in-out infinite alternate;
         }
 
         .crystal-label {
@@ -458,13 +452,13 @@
 
         // Định nghĩa 7 vị trí 3D trên băng chuyền vòng tròn (Parallax 3D thực thụ: tọa độ X, độ sâu Z, scale, brightness, blur, opacity)
         const slotConfigs = [
-            { left: 18, zIndex: 3, scale: 0.65, brightness: 0.5, blur: 5, opacity: 0.35, isFront: false }, // Slot 1 (sau xa trái)
+            { left: 18, zIndex: 3, scale: 0.65, brightness: 0.8, blur: 1.5, opacity: 0.75, isFront: false }, // Slot 1 (sau xa trái - ít mờ hơn slot 3, 5)
             { left: 30, zIndex: 6, scale: 0.90, brightness: 1.0, blur: 0, opacity: 1.0, isFront: true  }, // Slot 2 (trước trái - có nhãn)
             { left: 42, zIndex: 4, scale: 0.72, brightness: 0.6, blur: 3, opacity: 0.50, isFront: false }, // Slot 3 (sau giữa-trái)
             { left: 50, zIndex: 7, scale: 1.00, brightness: 1.1, blur: 0, opacity: 1.0, isFront: true  }, // Slot 4 (trước chính giữa - có nhãn)
             { left: 58, zIndex: 4, scale: 0.72, brightness: 0.6, blur: 3, opacity: 0.50, isFront: false }, // Slot 5 (sau giữa-phải)
             { left: 70, zIndex: 6, scale: 0.90, brightness: 1.0, blur: 0, opacity: 1.0, isFront: true  }, // Slot 6 (trước phải - có nhãn)
-            { left: 82, zIndex: 3, scale: 0.65, brightness: 0.5, blur: 5, opacity: 0.35, isFront: false }  // Slot 7 (sau xa phải)
+            { left: 82, zIndex: 3, scale: 0.65, brightness: 0.8, blur: 1.5, opacity: 0.75, isFront: false }  // Slot 7 (sau xa phải - ít mờ hơn slot 3, 5)
         ];
 
         const SLOT_COUNT = slotConfigs.length;
@@ -558,21 +552,42 @@
             });
         }
 
+        // Tỉ lệ nhãn chạy theo điểm cuối sợi dây (1 = đi đúng bằng viên đá, nhỏ hơn = biên độ nhẹ hơn)
+        const LABEL_FOLLOW = 0.6;
+        // Các nhãn đang hiển thị, mỗi nhãn gắn với sợi dây d phía trên nó
+        let labelEls = [];
+
         // Render nhãn tên ở các slot phía trước (2, 4, 6), căn chuẩn tâm và tịnh tiến đúng chiều dao động
         function renderLabels(showLabels = true) {
             const labelsContainer = document.getElementById('labels-container');
             labelsContainer.innerHTML = '';
+            labelEls = [];
 
             chainsData.forEach((chain, d) => {
                 const slot = slotConfigs[currentSlot(d)];
                 if (!slot.isFront) return;
 
                 const labelDiv = document.createElement('div');
-                labelDiv.className = `crystal-label-container swaying-label ${showLabels ? 'visible' : ''}`;
+                labelDiv.className = `crystal-label-container ${showLabels ? 'visible' : ''}`;
                 labelDiv.style.left = slot.left + '%';
                 labelDiv.innerHTML = `<div class="crystal-label">${chain.name}</div>`;
                 labelsContainer.appendChild(labelDiv);
+                labelEls.push({ el: labelDiv, d });
             });
+        }
+
+        /* Nhãn tịnh tiến trái/phải theo đúng vị trí điểm cuối sợi dây đá ở từng khung hình:
+           đá lắc về phía nào nhãn chạy về phía đó, đá đi nhanh thì nhãn đi nhanh */
+        function followLabels() {
+            labelEls.forEach(({ el, d }) => {
+                const sway = chainEls[d] && chainEls[d].querySelector('.chain-sway');
+                if (!sway) return;
+                const t = getComputedStyle(sway).transform;
+                // Xoay quanh đỉnh sợi dây: điểm cuối (0, h) lệch ngang một đoạn c * h
+                const endX = t && t !== 'none' ? new DOMMatrixReadOnly(t).c * sway.offsetHeight : 0;
+                el.style.transform = `translateX(-50%) translateX(${(endX * LABEL_FOLLOW).toFixed(2)}px)`;
+            });
+            requestAnimationFrame(followLabels);
         }
 
         /* Xoay vòng tròn phối cảnh 3D đúng 1 nấc: từng sợi lần lượt đi sang slot kế tiếp rồi dừng lại */
@@ -623,6 +638,7 @@
         window.addEventListener('DOMContentLoaded', () => {
             initChains();
             renderLabels(true);
+            requestAnimationFrame(followLabels);
         });
 
         /* Particles Rơi Chầm Chậm Cho Trang Chủ */
