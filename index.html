@@ -42,7 +42,8 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 2;
+            /* Nằm giữa hàng sau (slot 1, 3, 5, 7) và hàng trước (slot 2, 4, 6) - xem applyChain */
+            z-index: 3;
             pointer-events: none;
             mix-blend-mode: screen;
             filter: brightness(1.6) contrast(1.4) drop-shadow(0 0 30px rgba(255, 255, 255, 0.9)) drop-shadow(0 0 60px rgba(255, 215, 0, 0.6));
@@ -91,7 +92,7 @@
             left: 0;
             width: 100vw;
             height: 100vh;
-            z-index: 5;
+            /* Không đặt z-index để từng sợi dây xếp lớp trực tiếp với lớp ánh sáng */
             pointer-events: none;
         }
 
@@ -502,8 +503,8 @@
             el.style.height = (s.scale * 75) + 'vh';
             el.style.filter = `brightness(${s.brightness}) blur(${s.blur}px)`;
             el.style.opacity = s.opacity;
-            // Sợi càng to (càng gần) thì nằm càng trên
-            el.style.zIndex = Math.round(s.scale * 100);
+            // Sợi càng to (càng gần) thì nằm càng trên: hàng sau 1-2 (dưới lớp ánh sáng z-index 3), hàng trước 5-6
+            el.style.zIndex = Math.round((s.scale - 0.6) * 15);
             el.style.transform = `translateX(-50%) perspective(1000px) rotateY(${tilt}deg)`;
         }
 
@@ -995,6 +996,50 @@
             }
         `;
 
+        /* Tia sáng hologram nhiều màu chiếu từ tâm cạnh trên xuống */
+        const rayVertexShader = `
+            varying vec2 vUv;
+
+            void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+
+        const rayFragmentShader = `
+            uniform float uTime;
+            uniform float uHue;
+            uniform float uPhase;
+            uniform float uIntensity;
+
+            varying vec2 vUv;
+
+            vec3 hueToRgb(float h) {
+                return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+            }
+
+            void main() {
+                // 0 tại điểm phát ở cạnh trên, 1 ở cuối tia
+                float along = 1.0 - vUv.y;
+                // Tia hẹp ở gốc, loe dần khi đi xuống
+                float halfWidth = mix(0.03, 0.5, along);
+                float across = abs(vUv.x - 0.5);
+                float edge = smoothstep(halfWidth, 0.0, across);
+                float core = smoothstep(halfWidth * 0.3, 0.0, across);
+                float fade = smoothstep(0.0, 0.05, along) * (1.0 - smoothstep(0.45, 1.0, along));
+
+                // Vân quét hologram chạy dọc tia + nhấp nháy nhẹ
+                float scan = 0.8 + 0.2 * sin(along * 160.0 - uTime * 5.0);
+                float flicker = 0.7 + 0.3 * sin(uTime * 1.3 + uPhase) * sin(uTime * 2.1 + uPhase * 1.7);
+
+                vec3 color = hueToRgb(fract(uHue + along * 0.3 + uTime * 0.04));
+                color = mix(color, vec3(1.0), core * 0.45);
+
+                float alpha = (edge * 0.55 + core * 0.45) * fade * scan * flicker * uIntensity;
+                gl_FragColor = vec4(color * alpha, alpha);
+            }
+        `;
+
         class Application {
             constructor() {
                 this.container = document.getElementById('canvas-container');
@@ -1009,6 +1054,7 @@
 
                 this.initScene();
                 this.initLightPrism();
+                this.initHologramRays();
 
                 this.animate = this.animate.bind(this);
                 requestAnimationFrame(this.animate);
@@ -1066,10 +1112,57 @@
                 this.scene.add(this.beamMesh);
             }
 
+            initHologramRays() {
+                const RAY_COUNT = 7;
+                const RAY_LENGTH = 10;
+                const rayGeo = new THREE.PlaneGeometry(1.4, RAY_LENGTH);
+                // Đưa gốc tia lên đỉnh để xoay quanh điểm phát
+                rayGeo.translate(0, -RAY_LENGTH / 2, 0);
+
+                this.rays = [];
+                for (let i = 0; i < RAY_COUNT; i++) {
+                    const uniforms = {
+                        uTime: { value: 0 },
+                        uHue: { value: i / RAY_COUNT },
+                        uPhase: { value: i * 1.37 },
+                        uIntensity: { value: 0.32 }
+                    };
+
+                    const rayMat = new THREE.ShaderMaterial({
+                        vertexShader: rayVertexShader,
+                        fragmentShader: rayFragmentShader,
+                        uniforms,
+                        transparent: true,
+                        blending: THREE.AdditiveBlending,
+                        side: THREE.DoubleSide,
+                        depthWrite: false
+                    });
+
+                    const ray = new THREE.Mesh(rayGeo, rayMat);
+                    // Cùng điểm phát với luồng sáng chính, ở chính giữa cạnh trên
+                    ray.position.set(0, 4.8, 0.1);
+                    // Xòe đều thành hình quạt hướng xuống
+                    const baseAngle = (i / (RAY_COUNT - 1) - 0.5) * 1.1;
+                    ray.userData = { baseAngle, swaySpeed: 0.25 + (i % 3) * 0.08, phase: i * 1.37 };
+                    ray.rotation.z = baseAngle;
+
+                    this.scene.add(ray);
+                    this.rays.push(ray);
+                }
+            }
+
             animate() {
                 requestAnimationFrame(this.animate);
                 const elapsedTime = this.clock.getElapsedTime();
                 this.beamUniforms.uTime.value = elapsedTime;
+
+                // Các tia quét qua lại chậm rãi quanh điểm phát
+                this.rays.forEach((ray) => {
+                    const { baseAngle, swaySpeed, phase } = ray.userData;
+                    ray.material.uniforms.uTime.value = elapsedTime;
+                    ray.rotation.z = baseAngle + Math.sin(elapsedTime * swaySpeed + phase) * 0.09;
+                });
+
                 this.renderer.render(this.scene, this.camera);
             }
         }
