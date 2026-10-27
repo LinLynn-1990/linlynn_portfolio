@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+            }
+        }
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lin Lynn - Graphic Designer Portfolio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Montserrat', sans-serif;
+            background-color: #0b0c10;
+        }
+
+        .room-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: #0b0c10 url('images/room_bg.jpg') no-repeat center center;
+            background-size: cover;
+            overflow: hidden;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+            mix-blend-mode: screen;
+            filter: brightness(1.6) contrast(1.4) drop-shadow(0 0 30px rgba(255, 255, 255, 0.9)) drop-shadow(0 0 60px rgba(255, 215, 0, 0.6));
+        }
+
+        .profile-header {
+            position: absolute;
+            bottom: 45px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .profile-header h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 3.2rem;
+            font-weight: 600;
+            color: #ffffff;
+            letter-spacing: 7px;
+            text-shadow: 
+                0 0 10px rgba(255, 215, 0, 0.9),
+                0 0 25px rgba(255, 200, 50, 0.7),
+                0 4px 20px rgba(0, 0, 0, 0.95),
+                0 10px 40px rgba(0, 0, 0, 0.9);
+            margin-bottom: 4px;
+        }
+
+        .profile-header p {
+            font-size: 0.9rem;
+            color: #ffffff;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            font-weight: 500;
+            text-shadow: 
+                0 0 8px rgba(255, 215, 0, 0.8),
+                0 2px 12px rgba(0, 0, 0, 0.95),
+                0 4px 25px rgba(0, 0, 0, 0.85);
+        }
+
+        /* Container chứa các sợi dây trên băng chuyền 3D */
+        .chains-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        .crystal-chain-wrapper {
+            position: absolute;
+            top: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            pointer-events: auto;
+            transform-origin: top center;
+            /* Hiệu ứng trượt băng chuyền 3D mượt mà */
+            transition: left 0.8s cubic-bezier(0.25, 1, 0.5, 1), transform 0.8s cubic-bezier(0.25, 1, 0.5, 1), filter 0.8s ease, opacity 0.8s ease, scale 0.8s ease;
+        }
+
+        /* Hiệu ứng đung đưa vật lý chân thực */
+        @keyframes sway {
+            0% { transform: translateX(-50%) rotate(-2.2deg); }
+            100% { transform: translateX(-50%) rotate(2.2deg); }
+        }
+
+        .crystal-chain-wrapper.swaying {
+            animation: sway 6s ease-in-out infinite alternate;
+        }
+
+        .crystal-chain-wrapper:hover {
+            animation-play-state: paused;
+        }
+
+        /* Hiệu ứng nháy sáng ngẫu nhiên tự nhiên cho từng sợi dây */
+        .real-chain-img {
+            height: 100%;
+            width: auto;
+            object-fit: contain;
+            animation: chainSoftPulse 4s ease-in-out infinite;
+            transition: transform 0.4s ease, filter 0.4s ease;
+        }
+
+        @keyframes chainSoftPulse {
+            0%, 100% {
+                filter: brightness(1.0) drop-shadow(0 0 0px rgba(255, 255, 255, 0));
+            }
+            50% {
+                filter: brightness(1.2) drop-shadow(0 0 12px rgba(255, 240, 180, 0.5));
+            }
+        }
+
+        .chain-1-img { animation-delay: 0.2s; animation-duration: 3.5s; }
+        .chain-2-img { animation-delay: 1.8s; animation-duration: 4.2s; }
+        .chain-3-img { animation-delay: 0.7s; animation-duration: 3.8s; }
+        .chain-4-img { animation-delay: 2.3s; animation-duration: 4.5s; }
+        .chain-5-img { animation-delay: 1.1s; animation-duration: 3.2s; }
+        .chain-6-img { animation-delay: 2.9s; animation-duration: 4.0s; }
+        .chain-7-img { animation-delay: 0.4s; animation-duration: 3.6s; }
+
+        .crystal-chain-wrapper:hover .real-chain-img {
+            transform: scale(1.06);
+            filter: drop-shadow(0 0 25px rgba(255, 215, 0, 0.9)) drop-shadow(0 0 40px rgba(255, 255, 255, 0.95)) !important;
+        }
+
+        /* Vầng sáng tỏa khi hover ôm khít viên đá chính ở đuôi dưới cùng */
+        .glow-aura {
+            position: absolute;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 110px;
+            height: 110px;
+            background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,215,0,0.55) 45%, transparent 70%);
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .crystal-chain-wrapper:hover .glow-aura {
+            opacity: 1;
+            animation: pulseAura 1.5s infinite alternate;
+        }
+
+        @keyframes pulseAura {
+            0% { transform: translateX(-50%) scale(0.85); opacity: 0.7; }
+            100% { transform: translateX(-50%) scale(1.35); opacity: 1; }
+        }
+
+        /* Nhãn tên: Đẩy lên cao hẳn phía trên chữ LIN LYNN, siêu nhỏ gọn, tịnh tiến ngang ĐÚNG CHIỀU theo nhịp lắc của sợi dây */
+        .crystal-label-container {
+            position: absolute;
+            bottom: 22vh;
+            z-index: 20;
+            pointer-events: none;
+            transition: left 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        @keyframes labelParallaxSlide {
+            0% { transform: translateX(-50%) translateX(-10px); }
+            100% { transform: translateX(-50%) translateX(10px); }
+        }
+
+        .crystal-label-container.swaying-label {
+            animation: labelParallaxSlide 6s ease-in-out infinite alternate;
+        }
+
+        .crystal-label {
+            font-size: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #4a3b32;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 3px 8px;
+            border-radius: 8px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            white-space: nowrap;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+        }
+
+        .crystal-label-container.visible .crystal-label {
+            opacity: 1;
+        }
+
+        /* Hiệu ứng sao lấp lánh */
+        .sparkle-star {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            pointer-events: none;
+            z-index: 15;
+            opacity: 0;
+            animation: starBlink 3s ease-in-out infinite;
+        }
+
+        .sparkle-star::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, #ffffff 25%, #fff3b0 65%, #ffd700 100%);
+            clip-path: polygon(50% 0%, 57% 43%, 100% 50%, 57% 57%, 50% 100%, 43% 57%, 0% 50%, 43% 43%);
+            filter: drop-shadow(0 0 6px #ffffff) drop-shadow(0 0 14px #ffd700) drop-shadow(0 0 25px rgba(255,255,255,0.8));
+        }
+
+        @keyframes starBlink {
+            0%, 100% { transform: scale(0.2) rotate(0deg); opacity: 0; }
+            30% { transform: scale(1.1) rotate(40deg); opacity: var(--star-max-opacity, 0.9); }
+            50% { transform: scale(0.5) rotate(70deg); opacity: 0.3; }
+            70% { transform: scale(1.4) rotate(90deg); opacity: var(--star-max-opacity, 1); }
+        }
+
+        .star-1 { top: 35%; left: 30%; }
+        .star-2 { top: 65%; right: 25%; transform: scale(0.7); }
+
+        /* Vùng click khoảng trống ngoài lề */
+        .side-click-left, .side-click-right {
+            position: absolute;
+            top: 0;
+            width: 12%;
+            height: 100%;
+            z-index: 8;
+            cursor: pointer;
+        }
+        .side-click-left { left: 0; }
+        .side-click-right { right: 0; }
+
+        /* ==================== TRANG CON DỰ ÁN ==================== */
+        #project-page {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #0b0c10;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.6s ease, transform 0.6s ease;
+            transform: scale(0.95);
+            overflow: hidden;
+        }
+
+        #project-page.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1);
+        }
+
+        .project-bg-texture {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(15, 17, 25, 0.78) 0%, rgba(7, 8, 12, 0.96) 100%), 
+                        url('images/room_bg.jpg') no-repeat center center;
+            background-size: cover;
+            backdrop-filter: blur(20px);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        #project-particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .project-header {
+            position: relative;
+            padding: 25px 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            z-index: 10;
+        }
+
+        .project-title-area h2 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2.3rem;
+            color: #f7ede2;
+            letter-spacing: 2px;
+            margin-bottom: 2px;
+            text-shadow: 0 0 12px rgba(255, 215, 0, 0.3);
+        }
+
+        .project-title-area p {
+            font-size: 0.8rem;
+            color: #b3a598;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        .back-btn {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.85) 0%, rgba(243, 229, 171, 0.95) 100%);
+            color: #121318;
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            padding: 10px 24px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+        }
+
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+            background: #ffffff;
+        }
+
+        #project-three-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            cursor: grab;
+        }
+
+        #project-three-container:active {
+            cursor: grabbing;
+        }
+
+        .card-label-overlay {
+            position: absolute;
+            bottom: 35px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 12;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.4rem;
+            color: #ffd700;
+            letter-spacing: 3px;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.6), 0 2px 10px rgba(0,0,0,0.9);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .card-label-overlay.active {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="room-container">
+        <div id="canvas-container"></div>
+        <canvas id="particles-canvas"></canvas>
+
+        <!-- Vùng click khoảng trống ngoài lề trái & lề phải -->
+        <div class="side-click-left" onclick="shiftChains(1)" title="Xoay vòng trái"></div>
+        <div class="side-click-right" onclick="shiftChains(-1)" title="Xoay vòng phải"></div>
+
+        <div class="chains-container" id="chains-container">
+            <!-- Được render động bằng JavaScript theo hệ tọa độ Parallax 3D thực tế -->
+        </div>
+
+        <!-- Container chứa các nhãn tên đẩy lên cao thoáng, tịnh tiến ngang ĐÚNG CHIỀU theo dao động sợi dây -->
+        <div id="labels-container"></div>
+
+        <div class="profile-header">
+            <h1>LIN LYNN</h1>
+            <p>Art - Design</p>
+        </div>
+    </div>
+
+    <!-- TRANG CHI TIẾT DỰ ÁN -->
+    <div id="project-page">
+        <div class="project-bg-texture"></div>
+        <canvas id="project-particles"></canvas>
+        
+        <div class="project-header">
+            <div class="project-title-area">
+                <h2 id="proj-title">Dự Án Key Visual Lịch & Ấn Phẩm 2027</h2>
+                <p id="proj-subtitle">TRANH MINH HỌA 3D METALLIC CHO DOANH NGHIỆP</p>
+            </div>
+            <button class="back-btn" onclick="closeProject()">QUAY LẠI CĂN PHÒNG</button>
+        </div>
+
+        <div id="project-three-container"></div>
+        <div id="card-label-overlay" class="card-label-overlay"></div>
+    </div>
+
+    <script>
+        // Danh sách 7 sợi charm trên băng chuyền vòng tròn
+        const chainsData = [
+            { id: 'drop_purple', name: 'Giọt Nước Tím', img: 'images/Layer 2.png' },     // 0
+            { id: 'moon', name: 'Trăng Khuyết Tím', img: 'images/Layer 1.png' },          // 1
+            { id: 'sphere', name: 'Quả Cầu Pha Lê', img: 'images/Layer 3.png' },       // 2
+            { id: 'sun', name: 'Mặt Trời Vàng', img: 'images/Layer 8.png' },              // 3
+            { id: 'teardrop', name: 'Giọt Ngọc Aquamarine', img: 'images/Layer 5.png' }, // 4
+            { id: 'heart', name: 'Trái Tim Hồng', img: 'images/Layer 7.png' },            // 5
+            { id: 'star', name: 'Ngôi Sao Pha Lê', img: 'images/Layer 9.png' }           // 6
+        ];
+
+        let currentOffset = 0;
+        let isTransitioning = false;
+
+        // Định nghĩa 7 vị trí 3D trên băng chuyền vòng tròn (Parallax 3D thực thụ: tọa độ X, độ sâu Z, scale, brightness, blur, opacity)
+        const slotConfigs = [
+            { left: 18, zIndex: 3, scale: 0.65, brightness: 0.5, blur: 5, opacity: 0.35, isFront: false }, // Slot 1 (sau xa trái)
+            { left: 30, zIndex: 6, scale: 0.90, brightness: 1.0, blur: 0, opacity: 1.0, isFront: true  }, // Slot 2 (trước trái - có nhãn)
+            { left: 42, zIndex: 4, scale: 0.72, brightness: 0.6, blur: 3, opacity: 0.50, isFront: false }, // Slot 3 (sau giữa-trái)
+            { left: 50, zIndex: 7, scale: 1.00, brightness: 1.1, blur: 0, opacity: 1.0, isFront: true  }, // Slot 4 (trước chính giữa - có nhãn)
+            { left: 58, zIndex: 4, scale: 0.72, brightness: 0.6, blur: 3, opacity: 0.50, isFront: false }, // Slot 5 (sau giữa-phải)
+            { left: 70, zIndex: 6, scale: 0.90, brightness: 1.0, blur: 0, opacity: 1.0, isFront: true  }, // Slot 6 (trước phải - có nhãn)
+            { left: 82, zIndex: 3, scale: 0.65, brightness: 0.5, blur: 5, opacity: 0.35, isFront: false }  // Slot 7 (sau xa phải)
+        ];
+
+        function renderChains(showLabels = true) {
+            const container = document.getElementById('chains-container');
+            const labelsContainer = document.getElementById('labels-container');
+            container.innerHTML = '';
+            labelsContainer.innerHTML = '';
+
+            for (let i = 0; i < 7; i++) {
+                // Ánh xạ vòng tròn băng chuyền 3D
+                const dataIndex = (i - currentOffset + 14) % 7;
+                const chain = chainsData[dataIndex];
+                const slot = slotConfigs[i];
+
+                const wrapper = document.createElement('div');
+                wrapper.className = `crystal-chain-wrapper swaying ${slot.isFront ? 'front-layer' : 'back-layer'}`;
+                
+                // Áp dụng thông số không gian 3D Parallax thực tế
+                wrapper.style.height = (slot.scale * 75) + 'vh';
+                wrapper.style.filter = `brightness(${slot.brightness}) blur(${slot.blur}px)`;
+                wrapper.style.opacity = slot.opacity;
+                wrapper.style.zIndex = slot.zIndex;
+                wrapper.style.left = slot.left + '%';
+                wrapper.style.transform = 'translateX(-50%)';
+
+                wrapper.onclick = (e) => {
+                    e.stopPropagation();
+                    if (isTransitioning) return;
+
+                    if (!slot.isFront) {
+                        if (i === 0 || i === 2) {
+                            shiftChains(1);
+                        } else if (i === 4 || i === 6) {
+                            shiftChains(-1);
+                        }
+                    } else {
+                        openProject(chain.id);
+                    }
+                };
+
+                wrapper.innerHTML = `
+                    <div class="glow-aura"></div>
+                    <div class="sparkle-star star-1" style="--star-max-opacity: ${slot.isFront ? 1 : 0.35};"></div>
+                    <div class="sparkle-star star-2" style="--star-max-opacity: ${slot.isFront ? 1 : 0.35};"></div>
+                    <img src="${chain.img}" alt="${chain.name}" class="real-chain-img chain-${(dataIndex % 7) + 1}-img">
+                `;
+
+                container.appendChild(wrapper);
+
+                // Render nhãn tên ở các slot phía trước (2, 4, 6), căn chuẩn tâm và tịnh tiến đúng chiều dao động
+                if (slot.isFront) {
+                    const labelDiv = document.createElement('div');
+                    labelDiv.className = `crystal-label-container swaying-label ${showLabels ? 'visible' : ''}`;
+                    labelDiv.style.left = slot.left + '%';
+                    labelDiv.innerHTML = `<div class="crystal-label">${chain.name}</div>`;
+                    labelsContainer.appendChild(labelDiv);
+                }
+            }
+        }
+
+        /* Xử lý hiệu ứng băng chuyền xoay 3D Parallax từng nấc mượt mà (0.8s) */
+        function shiftChains(direction) {
+            if (isTransitioning) return;
+            isTransitioning = true;
+
+            // Ẩn nhãn tên khi băng chuyền bắt đầu xoay chuyển
+            renderChains(false);
+
+            // Dịch chuyển offset trên băng chuyền vòng tròn 3D
+            currentOffset = (currentOffset + direction + 7) % 7;
+
+            // Render lại vị trí mới với hiệu ứng trượt 3D mượt mà
+            renderChains(false);
+
+            // Đợi hoàn tất chuyển động (800ms) rồi hiện lại nhãn tên ở vị trí mới
+            setTimeout(() => {
+                renderChains(true);
+                isTransitioning = false;
+            }, 800);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderChains(true);
+        });
+
+        /* Particles Rơi Chầm Chậm Cho Trang Chủ */
+        const canvas = document.getElementById('particles-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const particles = [];
+        for (let i = 0; i < 90; i++) {
+            particles.push({
+                x: canvas.width / 2 + (Math.random() - 0.5) * 500,
+                y: Math.random() * canvas.height,
+                radius: Math.random() * 2.2 + 0.5,
+                color: Math.random() > 0.5 ? 'rgba(255, 230, 150, ' : (Math.random() > 0.5 ? 'rgba(255, 180, 230, ' : 'rgba(180, 240, 255, '),
+                alpha: Math.random() * 0.8 + 0.2,
+                vx: (Math.random() - 0.5) * 0.3,
+                vy: Math.random() * 0.5 + 0.2,
+                pulse: Math.random() * 0.03 + 0.01
+            });
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha += Math.sin(Date.now() * p.pulse) * 0.008;
+
+                if (p.y > canvas.height) {
+                    p.y = 0;
+                    p.x = canvas.width / 2 + (Math.random() - 0.5) * 400;
+                }
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = p.color + Math.max(0.1, Math.min(1, p.alpha)) + ')';
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = '#fff';
+                ctx.fill();
+            });
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        /* Particles Rơi Nhẹ Trên Trang Con */
+        const projCanvas = document.getElementById('project-particles');
+        const projCtx = projCanvas.getContext('2d');
+        let projParticles = [];
+
+        function resizeProjCanvas() {
+            projCanvas.width = window.innerWidth;
+            projCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeProjCanvas);
+        resizeProjCanvas();
+
+        for (let i = 0; i < 70; i++) {
+            projParticles.push({
+                x: Math.random() * projCanvas.width,
+                y: Math.random() * projCanvas.height,
+                radius: Math.random() * 1.8 + 0.4,
+                color: Math.random() > 0.4 ? 'rgba(255, 215, 0, ' : 'rgba(255, 255, 255, ',
+                alpha: Math.random() * 0.7 + 0.2,
+                vy: Math.random() * 0.25 + 0.1,
+                vx: (Math.random() - 0.5) * 0.15
+            });
+        }
+
+        function animateProjParticles() {
+            projCtx.clearRect(0, 0, projCanvas.width, projCanvas.height);
+            projParticles.forEach(p => {
+                p.y += p.vy;
+                p.x += p.vx;
+
+                if (p.y > projCanvas.height) {
+                    p.y = 0;
+                    p.x = Math.random() * projCanvas.width;
+                }
+
+                projCtx.beginPath();
+                projCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                projCtx.fillStyle = p.color + p.alpha + ')';
+                projCtx.shadowBlur = 6;
+                projCtx.shadowColor = '#ffd700';
+                projCtx.fill();
+            });
+            requestAnimationFrame(animateProjParticles);
+        }
+        animateProjParticles();
+
+        /* Dữ liệu dự án chi tiết */
+        const projectData = {
+            sun: {
+                title: "Dự Án: Key Visual Lịch & Ấn Phẩm 2027",
+                subtitle: "TRANH MINH HỌA 3D METALLIC CHO DOANH NGHIỆP",
+                items: [
+                    { title: "Desk Calendar Cover", img: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?auto=format&fit=crop&w=600&q=80" },
+                    { title: "Monthly Planner", img: "https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=600&q=80" },
+                    { title: "Metallic Postcard", img: "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=600&q=80" },
+                    { title: "Art Print Spread", img: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80" }
+                ]
+            },
+            heart: {
+                title: "Dự Án: Brand Identity Thạch Anh Hồng",
+                subtitle: "BỘ NHẬN DIỆN THƯƠNG HIỆU THỜI TRANG & MỸ PHẨM CAO CẤP",
+                items: [
+                    { title: "Logo & Color System", img: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80" },
+                    { title: "Packaging Box", img: "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=600&q=80" },
+                    { title: "Brand Guidelines", img: "https://images.unsplash.com/photo-1542744094-3a312462c4d0?auto=format&fit=crop&w=600&q=80" },
+                    { title: "Lookbook Concept", img: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=600&q=80" }
+                ]
+            },
+            sphere: {
+                title: "Dự Án: Thiết Kế Bao Bì Pha Lê",
+                subtitle: "BAO BÌ ĐỊNH VỊ PHÂN KHÚC CAO CẤP",
+                items: [
+                    { title: "Bottle Mockup", img: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=600&q=80" },
+                    { title: "Label Typography", img: "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?auto=format&fit=crop&w=600&q=80" },
+                    { title: "Retail Display", img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=600&q=80" },
+                    { title: "Luxury Box Set", img: "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=600&q=80" }
+                ]
+            },
+            moon: {
+                title: "Dự Án: Editorial Design & Sách Ảnh",
+                subtitle: "THIẾT KẾ TẠP CHÍ & CATALOGUE NGHỆ THUẬT",
+                items: [
+                    { title: "Magazine Spread", img: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80" },
+                    { title: "Typography Layout", img: "https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=600&q=80" },
+                    { title: "Hardcover Book", img: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=600&q=80" },
+                    { title: "Editorial Cover", img: "https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=600&q=80" }
+                ]
+            },
+            star: {
+                title: "Dự Án: Minh Họa & Poster Nghệ Thuật",
+                subtitle: "TRANH MINH HỌA PHONG CÁCH CÔNG BÚT & PHA LÊ",
+                items: [
+                    { title: "Poster Art", img: "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=600&q=80" },
+                    { title: "Digital Wallpapers", img: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80" },
+                    { title: "Exhibition Banner", img: "https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=600&q=80" },
+                    { title: "Art Edition", img: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?auto=format&fit=crop&w=600&q=80" }
+                ]
+            },
+            teardrop: {
+                title: "Dự Án: Nhận Diện Xanh Aquamarine",
+                subtitle: "PHONG CÁCH THIẾT KẾ XANH TỰ NHIÊN THƯ THÁI",
+                items: [
+                    { title: "Stationery Set", img: "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=600&q=80" },
+                    { title: "Eco Tote Bag", img: "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=600&q=80" },
+                    { title: "Uniform Design", img: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=600&q=80" },
+                    { title: "Packaging Bag", img: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=600&q=80" }
+                ]
+            },
+            drop_purple: {
+                title: "Dự Án: Thiết Kế Ấn Phẩm Giọt Nước Tím",
+                subtitle: "ẤN PHẨM QUẢNG CÁO & BRAND IDENTITY CAO CẤP",
+                items: [
+                    { title: "Brand Concept", img: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=600&q=80" },
+                    { title: "VIP Invitation", img: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=600&q=80" },
+                    { title: "Showroom Display", img: "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?auto=format&fit=crop&w=600&q=80" },
+                    { title: "Luxury Package", img: "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?auto=format&fit=crop&w=600&q=80" }
+                ]
+            }
+        };
+
+        function openProject(key) {
+            const data = projectData[key] || projectData['sun'];
+
+            document.getElementById('proj-title').innerText = data.title;
+            document.getElementById('proj-subtitle').innerText = data.subtitle;
+
+            document.getElementById('project-page').classList.add('active');
+
+            if (window.projectCarousel) {
+                window.projectCarousel.loadProject(data.items);
+            }
+        }
+
+        function closeProject() {
+            document.getElementById('project-page').classList.remove('active');
+            if (window.projectCarousel) {
+                window.projectCarousel.clear();
+            }
+        }
+    </script>
+
+    <!-- MODULE THREE.JS CHO LUỒNG ÁNH SÁNG & CAROUSEL TRANG CON -->
+    <script type="module">
+        import * as THREE from 'three';
+
+        const glslNoise3D = `
+            vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+            vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+            vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+            vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+
+            float snoise(vec3 v) {
+                const vec2 C = vec2(1.0/6.0, 1.0/3.0);
+                const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+
+                vec3 i  = floor(v + dot(v, C.yyy));
+                vec3 x0 = v - i + dot(i, C.xxx);
+
+                vec3 g = step(x0.yzx, x0.xyz);
+                vec3 l = 1.0 - g;
+                vec3 i1 = min(g.xyz, l.zxy);
+                vec3 i2 = max(g.xyz, l.zxy);
+
+                vec3 x1 = x0 - i1 + C.xxx;
+                vec3 x2 = x0 - i2 + C.yyy;
+                vec3 x3 = x0 - D.yyy;
+
+                i = mod289(i);
+                vec4 p = permute(permute(permute(
+                            i.z + vec4(0.0, i1.z, i2.z, 1.0))
+                        + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+                        + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+
+                float n_ = 0.142857142857;
+                vec3 ns = n_ * D.wyz - D.xzx;
+
+                vec4 j = p - 49.0 * floor(p * ns.z);
+
+                vec4 x_ = floor(j * ns.z);
+                vec4 y_ = floor(j - 7.0 * x_);
+
+                vec4 x = x_ *ns.x + ns.yyyy;
+                vec4 y = y_ *ns.x + ns.yyyy;
+                vec4 h = 1.0 - abs(x) - abs(y);
+
+                vec4 b0 = vec4(x.xy, y.xy);
+                vec4 b1 = vec4(x.zw, y.zw);
+
+                vec4 s0 = floor(b0)*2.0 + 1.0;
+                vec4 s1 = floor(b1)*2.0 + 1.0;
+                vec4 sh = -step(h, vec4(0.0));
+
+                vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
+                vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
+
+                vec3 p0 = vec3(a0.xy, h.x);
+                vec3 p1 = vec3(a0.zw, h.y);
+                vec3 p2 = vec3(a1.xy, h.z);
+                vec3 p3 = vec3(a1.zw, h.w);
+
+                vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+                p0 *= norm.x;
+                p1 *= norm.y;
+                p2 *= norm.z;
+                p3 *= norm.w;
+
+                vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+                m = m * m;
+                return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+            }
+
+            float fbm(vec3 p) {
+                float value = 0.0;
+                float amplitude = 0.5;
+                float frequency = 1.0;
+                for (int i = 0; i < 4; i++) {
+                    value += amplitude * snoise(p * frequency);
+                    frequency *= 2.05;
+                    amplitude *= 0.5;
+                }
+                return value;
+            }
+        `;
+
+        const glslSpectralPalette = `
+            vec3 spectralPalette(float t, float dispersion) {
+                vec3 a = vec3(0.70, 0.75, 0.80);
+                vec3 b = vec3(0.35, 0.30, 0.35) * dispersion;
+                vec3 c = vec3(1.0, 1.0, 1.0);
+                vec3 d = vec3(0.00, 0.20, 0.50) + vec3(0.1, 0.2, 0.3) * t;
+
+                vec3 color = a + b * cos(6.28318 * (c * t + d));
+                color = mix(color, vec3(0.92, 0.75, 0.95), sin(t * 3.1415) * 0.3);
+                color = mix(color, vec3(0.55, 0.90, 0.95), cos(t * 3.1415) * 0.3);
+                color = mix(color, vec3(0.98, 0.88, 0.70), sin((t + 0.5) * 3.1415) * 0.25);
+                return max(color, vec3(0.0));
+            }
+        `;
+
+        const beamVertexShader = `
+            varying vec3 vWorldPosition;
+            varying vec3 vNormal;
+            varying vec2 vUv;
+            varying vec3 vLocalPosition;
+
+            void main() {
+                vUv = uv;
+                vNormal = normalize(normalMatrix * normal);
+                vLocalPosition = position;
+                vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                vWorldPosition = worldPosition.xyz;
+                gl_Position = projectionMatrix * viewMatrix * worldPosition;
+            }
+        `;
+
+        const beamFragmentShader = `
+            uniform float uTime;
+            uniform float uBeamIntensity;
+            uniform float uDispersion;
+            uniform float uLightSpread;
+            uniform float uSpeed;
+
+            varying vec3 vWorldPosition;
+            varying vec3 vNormal;
+            varying vec2 vUv;
+            varying vec3 vLocalPosition;
+
+            ${glslNoise3D}
+            ${glslSpectralPalette}
+
+            void main() {
+                float heightFactor = clamp(1.0 - vUv.y, 0.0, 1.0);
+                vec2 rayCenter = vLocalPosition.xz;
+                float distFromCenter = length(rayCenter);
+
+                float time = uTime * uSpeed * 0.15;
+                vec3 noiseCoord = vec3(vLocalPosition.x * 0.8, vLocalPosition.y * 0.4 - time, vLocalPosition.z * 0.8);
+                
+                float rayNoise = fbm(noiseCoord);
+                float rayNoise2 = snoise(vec3(noiseCoord.xz * 2.5, time * 0.5));
+
+                float angularRays = sin(atan(vLocalPosition.z, vLocalPosition.x) * 12.0 + rayNoise * 4.0 + time);
+                angularRays = smoothstep(-0.2, 0.8, angularRays);
+
+                float coneRadius = heightFactor * uLightSpread * 4.5 + 0.3;
+                float coreDensity = smoothstep(coneRadius, 0.0, distFromCenter);
+                float rayDetails = smoothstep(0.3, 1.0, rayNoise * 0.5 + 0.5 + angularRays * 0.3);
+                
+                float spectralPos = fract(distFromCenter * 0.25 - heightFactor * 0.4 + rayNoise2 * 0.2 + time * 0.1);
+                vec3 spectralColor = spectralPalette(spectralPos, uDispersion);
+
+                float coreMask = smoothstep(coneRadius * 0.4, 0.0, distFromCenter);
+                vec3 finalBeamColor = mix(spectralColor, vec3(1.0, 0.98, 0.95), coreMask * 0.7);
+
+                vec3 viewDir = normalize(cameraPosition - vWorldPosition);
+                float rim = 1.0 - abs(dot(viewDir, vNormal));
+                float fresnel = pow(rim, 2.0);
+
+                float alpha = coreDensity * (0.35 + rayDetails * 0.65) * pow(heightFactor, 0.3) * uBeamIntensity;
+                alpha *= (0.6 + fresnel * 0.4);
+                alpha *= smoothstep(0.0, 0.08, vUv.y) * smoothstep(1.0, 0.9, vUv.y);
+
+                gl_FragColor = vec4(finalBeamColor * alpha, alpha);
+            }
+        `;
+
+        class Application {
+            constructor() {
+                this.container = document.getElementById('canvas-container');
+                this.clock = new THREE.Clock();
+
+                this.params = {
+                    beamIntensity: 0.8,
+                    dispersion: 2.0,
+                    lightSpread: 1.65,
+                    speed: 2.5
+                };
+
+                this.initScene();
+                this.initLightPrism();
+
+                this.animate = this.animate.bind(this);
+                requestAnimationFrame(this.animate);
+            }
+
+            initScene() {
+                this.renderer = new THREE.WebGLRenderer({
+                    antialias: true,
+                    powerPreference: "high-performance",
+                    alpha: true
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.container.appendChild(this.renderer.domElement);
+
+                this.scene = new THREE.Scene();
+
+                this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+                this.camera.position.set(0, 0, 11.5);
+                this.camera.lookAt(0, -0.5, 0);
+
+                window.addEventListener('resize', () => {
+                    const width = window.innerWidth;
+                    const height = window.innerHeight;
+                    this.camera.aspect = width / height;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(width, height);
+                });
+            }
+
+            initLightPrism() {
+                const coneGeo = new THREE.CylinderGeometry(0.4, 3.8, 7.5, 64, 64, true);
+                coneGeo.translate(0, -3.75, 0);
+
+                this.beamUniforms = {
+                    uTime: { value: 0 },
+                    uBeamIntensity: { value: this.params.beamIntensity },
+                    uDispersion: { value: this.params.dispersion },
+                    uLightSpread: { value: this.params.lightSpread },
+                    uSpeed: { value: this.params.speed }
+                };
+
+                const beamMat = new THREE.ShaderMaterial({
+                    vertexShader: beamVertexShader,
+                    fragmentShader: beamFragmentShader,
+                    uniforms: this.beamUniforms,
+                    transparent: true,
+                    blending: THREE.AdditiveBlending,
+                    side: THREE.DoubleSide,
+                    depthWrite: false
+                });
+
+                this.beamMesh = new THREE.Mesh(coneGeo, beamMat);
+                this.beamMesh.position.set(0, 4.8, 0);
+                this.scene.add(this.beamMesh);
+            }
+
+            animate() {
+                requestAnimationFrame(this.animate);
+                const elapsedTime = this.clock.getElapsedTime();
+                this.beamUniforms.uTime.value = elapsedTime;
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        /* ==================== THREE.JS TILT STACK CAROUSEL TRANG CON ==================== */
+        class ThreeProjectCarousel {
+            constructor() {
+                this.container = document.getElementById('project-three-container');
+                this.labelOverlay = document.getElementById('card-label-overlay');
+                this.cards = [];
+                this.textureLoader = new THREE.TextureLoader();
+
+                this.mouse = new THREE.Vector2(-1000, -1000);
+                this.targetMouse = new THREE.Vector2(0, 0);
+                this.raycaster = new THREE.Raycaster();
+
+                this.activeIndex = -1;
+
+                this.initScene();
+                this.initEvents();
+                this.animate = this.animate.bind(this);
+                requestAnimationFrame(this.animate);
+            }
+
+            initScene() {
+                this.scene = new THREE.Scene();
+
+                this.camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+                this.camera.position.set(0, 0, 7.5);
+
+                this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.container.appendChild(this.renderer.domElement);
+
+                this.frameTexture = this.textureLoader.load('images/khung.png');
+            }
+
+            initEvents() {
+                window.addEventListener('resize', () => {
+                    const width = window.innerWidth;
+                    const height = window.innerHeight;
+                    this.camera.aspect = width / height;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(width, height);
+                });
+
+                window.addEventListener('mousemove', (e) => {
+                    this.targetMouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                    this.targetMouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                });
+
+                this.container.addEventListener('click', () => {
+                    if (this.hoveredIndex !== -1 && this.hoveredIndex !== undefined) {
+                        if (this.activeIndex === this.hoveredIndex) {
+                            this.activeIndex = -1;
+                            this.labelOverlay.classList.remove('active');
+                        } else {
+                            this.activeIndex = this.hoveredIndex;
+                            this.labelOverlay.innerText = this.cards[this.activeIndex].userData.title;
+                            this.labelOverlay.classList.add('active');
+                        }
+                    } else {
+                        this.activeIndex = -1;
+                        this.labelOverlay.classList.remove('active');
+                    }
+                });
+            }
+
+            clear() {
+                this.cards.forEach(cardGroup => {
+                    this.scene.remove(cardGroup);
+                    cardGroup.traverse(child => {
+                        if (child.geometry) child.geometry.dispose();
+                        if (child.material) {
+                            if (child.material.map) child.material.map.dispose();
+                            child.material.dispose();
+                        }
+                    });
+                });
+                this.cards = [];
+                this.activeIndex = -1;
+                this.labelOverlay.classList.remove('active');
+            }
+
+            loadProject(items) {
+                this.clear();
+
+                const frameWidth = 1.8;
+                const frameHeight = 2.7;
+                const frameGeo = new THREE.PlaneGeometry(frameWidth, frameHeight);
+
+                const artWidth = 1.55; 
+                const artHeight = 2.35;
+                const artGeo = new THREE.PlaneGeometry(artWidth, artHeight);
+
+                items.forEach((item, index) => {
+                    const cardGroup = new THREE.Group();
+
+                    const artTexture = this.textureLoader.load(item.img);
+                    const artMaterial = new THREE.MeshBasicMaterial({
+                        map: artTexture,
+                        side: THREE.DoubleSide
+                    });
+                    const artMesh = new THREE.Mesh(artGeo, artMaterial);
+                    artMesh.position.set(0, 0, 0);
+                    cardGroup.add(artMesh);
+
+                    const frameMaterial = new THREE.MeshBasicMaterial({
+                        map: this.frameTexture,
+                        transparent: true,
+                        blending: THREE.AdditiveBlending,
+                        depthWrite: false,
+                        side: THREE.DoubleSide
+                    });
+                    const frameMesh = new THREE.Mesh(frameGeo, frameMaterial);
+                    frameMesh.position.set(0, 0, 0.02);
+                    cardGroup.add(frameMesh);
+
+                    const total = items.length;
+                    const spacing = 0.88;
+                    const startX = -((total - 1) * spacing) / 2;
+
+                    const defaultX = startX + index * spacing;
+                    const defaultY = 0;
+                    const defaultZ = index * 0.14;
+
+                    const defaultRotY = -0.45;
+                    const defaultRotX = 0.15;
+
+                    cardGroup.position.set(defaultX, defaultY, defaultZ);
+                    cardGroup.rotation.set(defaultRotX, defaultRotY, 0);
+
+                    cardGroup.userData = {
+                        index: index,
+                        title: item.title,
+                        defaultPos: new THREE.Vector3(defaultX, defaultY, defaultZ),
+                        defaultRot: new THREE.Euler(defaultRotX, defaultRotY, 0),
+                        hitMesh: frameMesh
+                    };
+
+                    this.scene.add(cardGroup);
+                    this.cards.push(cardGroup);
+                });
+            }
+
+            animate() {
+                requestAnimationFrame(this.animate);
+
+                this.mouse.x += (this.targetMouse.x - this.mouse.x) * 0.1;
+                this.mouse.y += (this.targetMouse.y - this.mouse.y) * 0.1;
+
+                if (this.cards.length > 0) {
+                    this.raycaster.setFromCamera(this.targetMouse, this.camera);
+                    const hitObjects = this.cards.map(c => c.userData.hitMesh);
+                    const intersects = this.raycaster.intersectObjects(hitObjects);
+
+                    if (intersects.length > 0) {
+                        const hitMesh = intersects[0].object;
+                        this.hoveredIndex = hitMesh.parent.userData.index;
+                    } else {
+                        this.hoveredIndex = -1;
+                    }
+
+                    this.cards.forEach((cardGroup, index) => {
+                        const uData = cardGroup.userData;
+                        let targetX = uData.defaultPos.x;
+                        let targetY = uData.defaultPos.y;
+                        let targetZ = uData.defaultPos.z;
+
+                        let targetRotX = uData.defaultRot.x;
+                        let targetRotY = uData.defaultRot.y;
+                        let targetRotZ = 0;
+
+                        if (this.activeIndex !== -1) {
+                            if (index === this.activeIndex) {
+                                targetX = 0;
+                                targetY = 0;
+                                targetZ = 2.2;
+                                targetRotX = this.mouse.y * 0.15;
+                                targetRotY = this.mouse.x * 0.15;
+                            } else {
+                                targetZ = -1.5;
+                                targetX = (index < this.activeIndex) ? -3.2 : 3.2;
+                            }
+                        } else {
+                            if (index === this.hoveredIndex) {
+                                targetZ += 0.45;
+                                targetY += 0.1;
+                                targetRotX += this.mouse.y * 0.25;
+                                targetRotY += this.mouse.x * 0.25;
+                            }
+                        }
+
+                        cardGroup.position.x += (targetX - cardGroup.position.x) * 0.1;
+                        cardGroup.position.y += (targetY - cardGroup.position.y) * 0.1;
+                        cardGroup.position.z += (targetZ - cardGroup.position.z) * 0.1;
+
+                        cardGroup.rotation.x += (targetRotX - cardGroup.rotation.x) * 0.1;
+                        cardGroup.rotation.y += (targetRotY - cardGroup.rotation.y) * 0.1;
+                        cardGroup.rotation.z += (targetRotZ - cardGroup.rotation.z) * 0.1;
+                    });
+                }
+
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            new Application();
+            window.projectCarousel = new ThreeProjectCarousel();
+        });
+    </script>
+</body>
+</html>
