@@ -104,21 +104,31 @@
             cursor: pointer;
             pointer-events: auto;
             transform-origin: top center;
-            /* Hiệu ứng trượt băng chuyền 3D mượt mà */
-            transition: left 0.8s cubic-bezier(0.25, 1, 0.5, 1), transform 0.8s cubic-bezier(0.25, 1, 0.5, 1), filter 0.8s ease, opacity 0.8s ease, scale 0.8s ease;
+            /* Vị trí, độ sâu, phối cảnh do JavaScript tính từng khung hình khi xoay vòng 3D */
+            will-change: left, height, transform, filter, opacity;
+        }
+
+        /* Lớp bên trong chỉ lo đung đưa, để không đè lên transform xoay 3D của lớp ngoài */
+        .chain-sway {
+            position: relative;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform-origin: top center;
         }
 
         /* Hiệu ứng đung đưa vật lý chân thực */
         @keyframes sway {
-            0% { transform: translateX(-50%) rotate(-2.2deg); }
-            100% { transform: translateX(-50%) rotate(2.2deg); }
+            0% { transform: rotate(-2.2deg); }
+            100% { transform: rotate(2.2deg); }
         }
 
-        .crystal-chain-wrapper.swaying {
+        .chain-sway.swaying {
             animation: sway 6s ease-in-out infinite alternate;
         }
 
-        .crystal-chain-wrapper:hover {
+        .crystal-chain-wrapper:hover .chain-sway {
             animation-play-state: paused;
         }
 
@@ -457,34 +467,77 @@
             { left: 82, zIndex: 3, scale: 0.65, brightness: 0.5, blur: 5, opacity: 0.35, isFront: false }  // Slot 7 (sau xa phải)
         ];
 
-        function renderChains(showLabels = true) {
+        const SLOT_COUNT = slotConfigs.length;
+        const STEP_MS = 800;     // thời gian mỗi sợi đi hết 1 nấc
+        const STAGGER_MS = 60;   // độ trễ giữa các sợi để xoay lần lượt từng sợi một
+        const TILT_DEG = 18;     // độ nghiêng phối cảnh khi sợi dây đang di chuyển
+
+        // Mỗi sợi dây giữ 1 phần tử DOM cố định và 1 vị trí liên tục trên vòng tròn (0..6, có phần lẻ khi đang xoay)
+        const chainEls = [];
+        const chainPos = chainsData.map((_, d) => (d + currentOffset) % SLOT_COUNT);
+
+        const wrapSlot = (n) => ((n % SLOT_COUNT) + SLOT_COUNT) % SLOT_COUNT;
+        const currentSlot = (d) => wrapSlot(Math.round(chainPos[d]));
+        const easeInOutCubic = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+        // Nội suy thông số 3D giữa 2 slot liền kề; đoạn từ slot 7 về slot 1 đi vòng ra phía sau vòng tròn
+        function slotStateAt(p) {
+            const base = Math.floor(p);
+            const t = p - base;
+            const a = slotConfigs[wrapSlot(base)];
+            const b = slotConfigs[wrapSlot(base + 1)];
+            const lerp = (x, y) => x + (y - x) * t;
+
+            const s = {
+                left: lerp(a.left, b.left),
+                scale: lerp(a.scale, b.scale),
+                brightness: lerp(a.brightness, b.brightness),
+                blur: lerp(a.blur, b.blur),
+                opacity: lerp(a.opacity, b.opacity)
+            };
+
+            if (wrapSlot(base) === SLOT_COUNT - 1 && t > 0) {
+                const back = Math.sin(Math.PI * t);
+                s.scale -= 0.2 * back;
+                s.brightness -= 0.2 * back;
+                s.blur += 3 * back;
+                s.opacity *= 1 - 0.6 * back;
+            }
+            return s;
+        }
+
+        function applyChain(d, tilt = 0) {
+            const s = slotStateAt(chainPos[d]);
+            const el = chainEls[d];
+            el.style.left = s.left + '%';
+            el.style.height = (s.scale * 75) + 'vh';
+            el.style.filter = `brightness(${s.brightness}) blur(${s.blur}px)`;
+            el.style.opacity = s.opacity;
+            // Sợi càng to (càng gần) thì nằm càng trên
+            el.style.zIndex = Math.round(s.scale * 100);
+            el.style.transform = `translateX(-50%) perspective(1000px) rotateY(${tilt}deg)`;
+        }
+
+        function settleChain(d) {
+            const slot = slotConfigs[currentSlot(d)];
+            chainEls[d].style.setProperty('--star-max-opacity', slot.isFront ? 1 : 0.35);
+            applyChain(d, 0);
+        }
+
+        function initChains() {
             const container = document.getElementById('chains-container');
-            const labelsContainer = document.getElementById('labels-container');
             container.innerHTML = '';
-            labelsContainer.innerHTML = '';
 
-            for (let i = 0; i < 7; i++) {
-                // Ánh xạ vòng tròn băng chuyền 3D
-                const dataIndex = (i - currentOffset + 14) % 7;
-                const chain = chainsData[dataIndex];
-                const slot = slotConfigs[i];
-
+            chainsData.forEach((chain, d) => {
                 const wrapper = document.createElement('div');
-                wrapper.className = `crystal-chain-wrapper swaying ${slot.isFront ? 'front-layer' : 'back-layer'}`;
-                
-                // Áp dụng thông số không gian 3D Parallax thực tế
-                wrapper.style.height = (slot.scale * 75) + 'vh';
-                wrapper.style.filter = `brightness(${slot.brightness}) blur(${slot.blur}px)`;
-                wrapper.style.opacity = slot.opacity;
-                wrapper.style.zIndex = slot.zIndex;
-                wrapper.style.left = slot.left + '%';
-                wrapper.style.transform = 'translateX(-50%)';
+                wrapper.className = 'crystal-chain-wrapper';
 
                 wrapper.onclick = (e) => {
                     e.stopPropagation();
                     if (isTransitioning) return;
 
-                    if (!slot.isFront) {
+                    const i = currentSlot(d);
+                    if (!slotConfigs[i].isFront) {
                         if (i === 0 || i === 2) {
                             shiftChains(1);
                         } else if (i === 4 || i === 6) {
@@ -496,48 +549,83 @@
                 };
 
                 wrapper.innerHTML = `
-                    <div class="glow-aura"></div>
-                    <div class="sparkle-star star-1" style="--star-max-opacity: ${slot.isFront ? 1 : 0.35};"></div>
-                    <div class="sparkle-star star-2" style="--star-max-opacity: ${slot.isFront ? 1 : 0.35};"></div>
-                    <img src="${chain.img}" alt="${chain.name}" class="real-chain-img chain-${(dataIndex % 7) + 1}-img">
+                    <div class="chain-sway swaying">
+                        <div class="glow-aura"></div>
+                        <div class="sparkle-star star-1"></div>
+                        <div class="sparkle-star star-2"></div>
+                        <img src="${chain.img}" alt="${chain.name}" class="real-chain-img chain-${d + 1}-img">
+                    </div>
                 `;
 
                 container.appendChild(wrapper);
-
-                // Render nhãn tên ở các slot phía trước (2, 4, 6), căn chuẩn tâm và tịnh tiến đúng chiều dao động
-                if (slot.isFront) {
-                    const labelDiv = document.createElement('div');
-                    labelDiv.className = `crystal-label-container swaying-label ${showLabels ? 'visible' : ''}`;
-                    labelDiv.style.left = slot.left + '%';
-                    labelDiv.innerHTML = `<div class="crystal-label">${chain.name}</div>`;
-                    labelsContainer.appendChild(labelDiv);
-                }
-            }
+                chainEls[d] = wrapper;
+                settleChain(d);
+            });
         }
 
-        /* Xử lý hiệu ứng băng chuyền xoay 3D Parallax từng nấc mượt mà (0.8s) */
+        // Render nhãn tên ở các slot phía trước (2, 4, 6), căn chuẩn tâm và tịnh tiến đúng chiều dao động
+        function renderLabels(showLabels = true) {
+            const labelsContainer = document.getElementById('labels-container');
+            labelsContainer.innerHTML = '';
+
+            chainsData.forEach((chain, d) => {
+                const slot = slotConfigs[currentSlot(d)];
+                if (!slot.isFront) return;
+
+                const labelDiv = document.createElement('div');
+                labelDiv.className = `crystal-label-container swaying-label ${showLabels ? 'visible' : ''}`;
+                labelDiv.style.left = slot.left + '%';
+                labelDiv.innerHTML = `<div class="crystal-label">${chain.name}</div>`;
+                labelsContainer.appendChild(labelDiv);
+            });
+        }
+
+        /* Xoay vòng tròn phối cảnh 3D đúng 1 nấc: từng sợi lần lượt đi sang slot kế tiếp rồi dừng lại */
         function shiftChains(direction) {
             if (isTransitioning) return;
             isTransitioning = true;
 
             // Ẩn nhãn tên khi băng chuyền bắt đầu xoay chuyển
-            renderChains(false);
+            renderLabels(false);
 
-            // Dịch chuyển offset trên băng chuyền vòng tròn 3D
-            currentOffset = (currentOffset + direction + 7) % 7;
+            currentOffset = (currentOffset + direction + SLOT_COUNT) % SLOT_COUNT;
 
-            // Render lại vị trí mới với hiệu ứng trượt 3D mượt mà
-            renderChains(false);
+            const starts = chainPos.slice();
+            // Sợi đi đầu theo hướng xoay khởi hành trước, các sợi sau nối tiếp
+            const order = chainsData.map((_, d) => d)
+                .sort((a, b) => (currentSlot(b) - currentSlot(a)) * direction);
+            const total = STEP_MS + STAGGER_MS * (order.length - 1);
+            const startTime = performance.now();
 
-            // Đợi hoàn tất chuyển động (800ms) rồi hiện lại nhãn tên ở vị trí mới
-            setTimeout(() => {
-                renderChains(true);
+            function frame(now) {
+                const elapsed = now - startTime;
+
+                order.forEach((d, k) => {
+                    const t = Math.min(1, Math.max(0, (elapsed - k * STAGGER_MS) / STEP_MS));
+                    chainPos[d] = starts[d] + direction * easeInOutCubic(t);
+                    applyChain(d, -direction * TILT_DEG * Math.sin(Math.PI * t));
+                });
+
+                if (elapsed < total) {
+                    requestAnimationFrame(frame);
+                    return;
+                }
+
+                // Dừng đúng tại slot mới rồi hiện lại nhãn tên
+                order.forEach((d) => {
+                    chainPos[d] = wrapSlot(starts[d] + direction);
+                    settleChain(d);
+                });
+                renderLabels(true);
                 isTransitioning = false;
-            }, 800);
+            }
+
+            requestAnimationFrame(frame);
         }
 
         window.addEventListener('DOMContentLoaded', () => {
-            renderChains(true);
+            initChains();
+            renderLabels(true);
         });
 
         /* Particles Rơi Chầm Chậm Cho Trang Chủ */
