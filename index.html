@@ -473,7 +473,7 @@
                 wrapper.className = `crystal-chain-wrapper swaying ${slot.isFront ? 'front-layer' : 'back-layer'}`;
                 
                 // Áp dụng thông số không gian 3D Parallax thực tế
-                wrapper.style.height = (slot.scale * 75) + 'vh';
+                wrapper.style.height = (slot.scale * 63.75) + 'vh'; // thu nhỏ 15% (75 * 0.85)
                 wrapper.style.filter = `brightness(${slot.brightness}) blur(${slot.blur}px)`;
                 wrapper.style.opacity = slot.opacity;
                 wrapper.style.zIndex = slot.zIndex;
