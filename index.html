@@ -1004,7 +1004,7 @@
                 this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
                 this.container.appendChild(this.renderer.domElement);
 
-                this.frameTexture = this.textureLoader.load('images/khung.png');
+                this.frameTexture = this.textureLoader.load('khung.png');
             }
 
             initEvents() {
@@ -1080,12 +1080,12 @@
                     const frameMaterial = new THREE.MeshBasicMaterial({
                         map: this.frameTexture,
                         transparent: true,
-                        blending: THREE.AdditiveBlending,
+                        blending: THREE.NormalBlending,
                         depthWrite: false,
                         side: THREE.DoubleSide
                     });
                     const frameMesh = new THREE.Mesh(frameGeo, frameMaterial);
-                    frameMesh.position.set(0, 0, 0.02);
+                    frameMesh.position.set(0, 0, -0.02);
                     cardGroup.add(frameMesh);
 
                     const total = items.length;
@@ -1097,7 +1097,7 @@
                     const defaultZ = index * 0.14;
 
                     const defaultRotY = -0.45;
-                    const defaultRotX = 0.15;
+                    const defaultRotX = 0;
 
                     cardGroup.position.set(defaultX, defaultY, defaultZ);
                     cardGroup.rotation.set(defaultRotX, defaultRotY, 0);
